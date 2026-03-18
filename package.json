@@ -1,0 +1,53 @@
+{
+  "name": "@widget-js/release",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "release": "dist/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "cli",
+    "deploy",
+    "ssh",
+    "upload",
+    "release"
+  ],
+  "author": "Neo Fu <rtugeek@gmail.com>",
+  "license": "MIT",
+  "description": "A simple Node.js CLI tool to deploy files and run commands on a remote server via SSH",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/widget-js/release.git"
+  },
+  "bugs": {
+    "url": "https://github.com/widget-js/release/issues"
+  },
+  "homepage": "https://github.com/widget-js/release#readme",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "commander": "^14.0.3",
+    "glob": "^13.0.6",
+    "node-ssh": "^13.2.1",
+    "picocolors": "^1.1.1",
+    "prompts": "^2.4.2",
+    "ssh-config": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/node": "^25.5.0",
+    "@types/prompts": "^2.4.9",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}
