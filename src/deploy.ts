@@ -6,6 +6,8 @@ import pc from 'picocolors';
 import { glob } from 'glob';
 import SSHConfig from 'ssh-config';
 import prompts from 'prompts';
+import ora from 'ora';
+import Table from 'cli-table3';
 import { DeployConfig, Step, UploadStep, CommandStep } from './types';
 import { log } from 'console';
 
@@ -52,6 +54,7 @@ export async function deploy(configPath: string, options?: { limit?: string; ski
 
   for (const host of hosts) {
     console.log(pc.bgBlue(pc.white(`\n--- Deploying to ${host} ---`)));
+    
     const result = await deployToHost(host, config);
     results.push(result);
     
@@ -64,13 +67,23 @@ export async function deploy(configPath: string, options?: { limit?: string; ski
   console.log(pc.green(`\nAll deployments completed!`));
 
   console.log(pc.blue('\nDeployment Summary:'));
-  const tableData = results.map(r => ({
-    Hostname: r.host,
-    IP: r.ip,
-    '运行结果': r.success ? '✅ Success' : '❌ Failed',
-    '失败原因': r.error || '-'
-  }));
-  console.table(tableData);
+  
+  const table = new Table({
+    head: [pc.cyan('Hostname'), pc.cyan('IP'), pc.cyan('运行结果'), pc.cyan('失败原因')],
+    style: { head: [] }, // Disable default colors to let picocolors work
+    wordWrap: true,
+  });
+
+  results.forEach(r => {
+    table.push([
+      r.host,
+      r.ip,
+      r.success ? pc.green('✅ 成功') : pc.red('❌ 失败'),
+      r.error ? pc.red(r.error) : pc.gray('-')
+    ]);
+  });
+
+  console.log(table.toString());
 }
 
 async function deployToHost(host: string, config: DeployConfig): Promise<DeployResult> {
@@ -158,12 +171,13 @@ async function deployToHost(host: string, config: DeployConfig): Promise<DeployR
   try {
     let connected = false;
     while (!connected) {
+      const spinner = ora(`Connecting to ${sshOptions.host} (alias: ${host})...`).start();
       try {
-        console.log(pc.blue(`Connecting to ${sshOptions.host} (alias: ${host})...`));
         await ssh.connect(sshOptions);
-        console.log(pc.green(`Connected to ${sshOptions.host} successfully!`));
+        spinner.succeed(pc.green(`Connected to ${sshOptions.host} successfully!`));
         connected = true;
       } catch (err: any) {
+        spinner.stop();
         const errorMsg = err.message || '';
         if (
           errorMsg.toLowerCase().includes('passphrase') ||
@@ -244,7 +258,7 @@ async function handleUploadStep(ssh: NodeSSH, step: UploadStep) {
   const stat = fs.statSync(localPath);
 
   if (stat.isDirectory()) {
-    console.log(pc.cyan(`Uploading directory: ${step.local} -> ${step.remote}`));
+    const spinner = ora(`Uploading directory: ${step.local} -> ${step.remote}`).start();
     
     // Process pattern and ignore if provided
     if (step.pattern || step.ignore) {
@@ -256,20 +270,20 @@ async function handleUploadStep(ssh: NodeSSH, step: UploadStep) {
         dot: true
       });
 
-      console.log(pc.gray(`Found ${files.length} files matching pattern/ignore rules.`));
+      spinner.text = `Found ${files.length} files matching pattern. Uploading...`;
       
       for (const file of files) {
         const fileLocalPath = path.join(localPath, file);
         // Normalize remote path for windows/linux differences
         const fileRemotePath = path.posix.join(remotePath, file.split(path.sep).join(path.posix.sep));
         
-        console.log(pc.gray(`  -> Uploading: ${file}`));
+        spinner.text = `Uploading: ${file}`;
         // Ensure remote directory exists
         const remoteDir = path.posix.dirname(fileRemotePath);
         await ssh.execCommand(`mkdir -p ${remoteDir}`);
         await ssh.putFile(fileLocalPath, fileRemotePath);
       }
-      console.log(pc.green(`Successfully uploaded ${files.length} files.`));
+      spinner.succeed(pc.green(`Successfully uploaded ${files.length} files from ${step.local}`));
     } else {
       // Default behavior without glob
       await ssh.putDirectory(localPath, remotePath, {
@@ -277,33 +291,44 @@ async function handleUploadStep(ssh: NodeSSH, step: UploadStep) {
         concurrency: 10,
         tick: (local, remote, error) => {
           if (error) {
-            console.error(pc.red(`Failed to upload ${local}: ${error.message}`));
+            spinner.fail(pc.red(`Failed to upload ${local}: ${error.message}`));
+            spinner.start(`Continuing upload...`);
+          } else {
+            spinner.text = `Uploading: ${local}`;
           }
         }
       });
-      console.log(pc.green(`Successfully uploaded directory ${step.local}`));
+      spinner.succeed(pc.green(`Successfully uploaded directory ${step.local}`));
     }
   } else {
-    console.log(pc.cyan(`Uploading file: ${step.local} -> ${step.remote}`));
+    const spinner = ora(`Uploading file: ${step.local} -> ${step.remote}`).start();
     // Ensure remote directory exists for single file
     const remoteDir = path.posix.dirname(remotePath);
     await ssh.execCommand(`mkdir -p ${remoteDir}`);
     await ssh.putFile(localPath, remotePath);
-    console.log(pc.green(`Successfully uploaded file ${step.local}`));
+    spinner.succeed(pc.green(`Successfully uploaded file ${step.local}`));
   }
 }
 
 async function handleCommandStep(ssh: NodeSSH, step: CommandStep) {
-  console.log(pc.cyan(`> ${step.command}`));
+  const spinner = ora(`Executing: ${step.command}`).start();
   const result = await ssh.execCommand(step.command);
   
-  if (result.stdout) {
-    console.log(result.stdout);
-  }
-  if (result.stderr) {
-    console.error(pc.yellow(result.stderr));
-  }
   if (result.code !== 0 && result.code !== null) {
-    console.error(pc.red(`Command exited with code ${result.code}`));
+    spinner.fail(pc.red(`Command failed with code ${result.code}: ${step.command}`));
+    if (result.stdout) {
+      console.log(result.stdout);
+    }
+    if (result.stderr) {
+      console.error(pc.yellow(result.stderr));
+    }
+  } else {
+    spinner.succeed(pc.green(`Command completed: ${step.command}`));
+    if (result.stdout) {
+      console.log(result.stdout);
+    }
+    if (result.stderr) {
+      console.error(pc.yellow(result.stderr));
+    }
   }
 }

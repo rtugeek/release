@@ -36,9 +36,11 @@
     "dist"
   ],
   "dependencies": {
+    "cli-table3": "^0.6.5",
     "commander": "^14.0.3",
     "glob": "^13.0.6",
     "node-ssh": "^13.2.1",
+    "ora": "^5.4.1",
     "picocolors": "^1.1.1",
     "prompts": "^2.4.2",
     "ssh-config": "^5.1.0"
