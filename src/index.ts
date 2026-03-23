@@ -11,9 +11,12 @@ program
   .description('A simple CLI to deploy files and run commands on a remote server via SSH')
   .version('1.0.0')
   .argument('[config]', 'Path to the JSON configuration file (defaults to release.json)', 'release.json')
-  .action(async (configPath: string) => {
+  .option('-l, --limit <host>', 'Limit deployment to a specific host')
+  .option('--skip-error', 'Skip errors and continue to next host', true)
+  .option('--no-skip-error', 'Stop execution if a host fails')
+  .action(async (configPath: string, options: { limit?: string; skipError: boolean }) => {
     try {
-      await deploy(configPath);
+      await deploy(configPath, options);
     } catch (error: any) {
       console.error(pc.red(`Execution failed: ${error.message || error}`));
       if (error.stack) {

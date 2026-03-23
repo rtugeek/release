@@ -12,7 +12,14 @@ import { log } from 'console';
 // Global cache for passphrase to avoid prompting multiple times
 let cachedPassphrase = '';
 
-export async function deploy(configPath: string) {
+interface DeployResult {
+  host: string;
+  ip: string;
+  success: boolean;
+  error?: string;
+}
+
+export async function deploy(configPath: string, options?: { limit?: string; skipError?: boolean }) {
   const fullPath = path.resolve(process.cwd(), configPath);
 
   if (!fs.existsSync(fullPath)) {
@@ -29,19 +36,44 @@ export async function deploy(configPath: string) {
     process.exit(1);
   }
 
-  const hosts = Array.isArray(config.host) ? config.host : [config.host];
+  let hosts = Array.isArray(config.host) ? config.host : [config.host];
+
+  if (options?.limit) {
+    hosts = hosts.filter(h => h === options.limit);
+    if (hosts.length === 0) {
+      console.warn(pc.yellow(`Warning: No host found matching limit '${options.limit}' in the configuration.`));
+      return;
+    }
+  }
 
   console.log(pc.blue(`\nStarting deployment to ${hosts.length} host(s)...\n`));
 
+  const results: DeployResult[] = [];
+
   for (const host of hosts) {
     console.log(pc.bgBlue(pc.white(`\n--- Deploying to ${host} ---`)));
-    await deployToHost(host, config);
+    const result = await deployToHost(host, config);
+    results.push(result);
+    
+    if (!result.success && options?.skipError === false) {
+      console.log(pc.red(`\nDeployment to ${host} failed and --no-skip-error is set. Aborting remaining deployments.`));
+      break;
+    }
   }
   
-  console.log(pc.green(`\nAll deployments completed successfully!`));
+  console.log(pc.green(`\nAll deployments completed!`));
+
+  console.log(pc.blue('\nDeployment Summary:'));
+  const tableData = results.map(r => ({
+    Hostname: r.host,
+    IP: r.ip,
+    '运行结果': r.success ? '✅ Success' : '❌ Failed',
+    '失败原因': r.error || '-'
+  }));
+  console.table(tableData);
 }
 
-async function deployToHost(host: string, config: DeployConfig) {
+async function deployToHost(host: string, config: DeployConfig): Promise<DeployResult> {
   const ssh = new NodeSSH();
 
   // Parse SSH config
@@ -91,8 +123,9 @@ async function deployToHost(host: string, config: DeployConfig) {
 
   // Ensure username is provided either from JSON or SSH config
   if (!sshOptions.username) {
-    console.error(pc.red(`Error: Username is required for host ${host}. Please provide it in the config file or ~/.ssh/config.`));
-    return;
+    const errorMsg = `Username is required for host ${host}. Please provide it in the config file or ~/.ssh/config.`;
+    console.error(pc.red(`Error: ${errorMsg}`));
+    return { host, ip: sshOptions.host, success: false, error: errorMsg };
   }
 
   // Fallback to default private key if no authentication method is provided
@@ -115,9 +148,10 @@ async function deployToHost(host: string, config: DeployConfig) {
   if (sshOptions.privateKey && fs.existsSync(sshOptions.privateKey)) {
     try {
       sshOptions.privateKey = fs.readFileSync(sshOptions.privateKey, 'utf-8');
-    } catch (err) {
-      console.error(pc.red(`Error: Failed to read private key file: ${err}`));
-      return;
+    } catch (err: any) {
+      const errorMsg = `Failed to read private key file: ${err.message || err}`;
+      console.error(pc.red(`Error: ${errorMsg}`));
+      return { host, ip: sshOptions.host, success: false, error: errorMsg };
     }
   }
 
@@ -173,8 +207,10 @@ async function deployToHost(host: string, config: DeployConfig) {
     }
 
     console.log(pc.green(`\nDeployment to ${host} completed successfully!`));
+    return { host, ip: sshOptions.host, success: true };
 
   } catch (error: any) {
+    let errorMsg = error.message || String(error);
     if (error.errors) {
       console.error(pc.red(`\nDeployment to ${host} failed with multiple errors:`));
       error.errors.forEach((e: any) => {
@@ -183,12 +219,14 @@ async function deployToHost(host: string, config: DeployConfig) {
           console.error(pc.gray(e.stack));
         }
       });
+      errorMsg = error.errors.map((e: any) => e.message || String(e)).join('; ');
     } else {
-      console.error(pc.red(`\nDeployment to ${host} failed: ${error.message || error}`));
+      console.error(pc.red(`\nDeployment to ${host} failed: ${errorMsg}`));
       if (error.stack) {
         console.error(pc.gray(error.stack));
       }
     }
+    return { host, ip: sshOptions.host, success: false, error: errorMsg };
   } finally {
     ssh.dispose();
   }

@@ -1,10 +1,30 @@
 # @widget-js/release
 
-[![npm version](https://img.shields.io/npm/v/@widget-js/release.svg)](https://www.npmjs.com/package/@widget-js/release)
-[![npm downloads](https://img.shields.io/npm/dm/@widget-js/release.svg)](https://www.npmjs.com/package/@widget-js/release)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[!\[npm version\](https://img.shields.io/npm/v/@widget-js/release.svg null)](https://www.npmjs.com/package/@widget-js/release)
+[!\[npm downloads\](https://img.shields.io/npm/dm/@widget-js/release.svg null)](https://www.npmjs.com/package/@widget-js/release)
+[!\[License: MIT\](https://img.shields.io/badge/License-MIT-yellow.svg null)](https://opensource.org/licenses/MIT)
 
-A simple Node.js CLI tool built with TypeScript and `tsup` that helps you copy files/folders to a remote server and execute commands via SSH.
+A lightweight, lightning-fast Node.js CLI tool that helps you copy files/folders to a remote server and execute commands via SSH. Designed for developers who want a simple, scriptable deployment process without the overhead of heavy automation frameworks.
+
+### Features
+- 🪶 **Extremely Lightweight**: No complex setup, just a simple JSON file.
+- 🚀 **Fast**: Glob pattern matching and concurrency support for file uploads.
+- 🔑 **Smart SSH**: Automatically parses your `~/.ssh/config` for aliases, users, and private keys.
+- 🛡️ **Interactive**: Prompts for encrypted SSH key passphrases on-the-fly and caches them.
+- 🌍 **Multi-Host**: Deploy to one or multiple servers sequentially with a single command.
+
+## Why not Ansible? (Comparison)
+
+While [Ansible](https://www.ansible.com/) is an incredibly powerful industry standard for IT automation, it can often be overkill for everyday developer tasks.
+
+| Feature / Aspect | `@widget-js/release` | Ansible |
+| :--- | :--- | :--- |
+| **Best For** | Simple frontend/Node.js deployments, personal projects | Bare-metal provisioning, complex enterprise infrastructure |
+| **Learning Curve** | **Zero** (Basic JSON and shell commands) | **High** (Requires learning YAML, Playbooks, Inventory) |
+| **Ecosystem** | Node.js (No Python dependency required) | Python-based |
+| **Configuration** | A single straightforward JSON array | Complex directory structures, Roles, and Playbooks |
+| **Idempotency** | No (Runs commands exactly as defined) | Yes (Ensures specific state without rerunning) |
+| **Core Action** | Simply "copy files & run commands" | Full system configuration & state management |
 
 ## Installation
 
@@ -62,6 +82,7 @@ Create a JSON file (e.g., `release.json`) to define your deployment script.
 ```
 
 ### Configuration Fields:
+
 - `host` (string | Array): The server's IP address, hostname, or **SSH Alias**. You can pass a single string or an array of strings to deploy to multiple servers. The CLI will automatically parse `~/.ssh/config` to resolve HostName, User, Port, and IdentityFile if an alias is provided.
 - `port` (number, optional): SSH port. Default is `22`. (Can be read from `~/.ssh/config`)
 - `username` (string, optional): SSH username. (Can be read from `~/.ssh/config`)
@@ -87,4 +108,11 @@ release
 
 # Or specify a custom config file
 release ./custom-config.json
+
+# Limit deployment to a specific host defined in your config
+release --limit nyhq
+
+# Stop execution if any host fails (by default, it skips errors and continues)
+release --no-skip-error
 ```
+
