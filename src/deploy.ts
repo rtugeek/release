@@ -6,6 +6,7 @@ import pc from 'picocolors';
 import { glob } from 'glob';
 import SSHConfig from 'ssh-config';
 import prompts from 'prompts';
+import { checkbox } from '@inquirer/prompts';
 import ora from 'ora';
 import Table from 'cli-table3';
 import { DeployConfig, Step, UploadStep, CommandStep } from './types';
@@ -48,18 +49,43 @@ export async function deploy(configPath: string, options?: { limit?: string; ski
     }
   }
 
+  if (hosts.length > 0) {
+    const selectedHosts = await checkbox({
+      message: 'Select hosts to deploy to:',
+      choices: hosts.map(h => ({
+        name: h,
+        value: h,
+        checked: true,
+      })),
+    });
+
+    if (selectedHosts.length === 0) {
+      console.log(pc.yellow('No hosts selected. Aborting deployment.'));
+      return;
+    }
+    hosts = selectedHosts;
+  }
+
   console.log(pc.blue(`\nStarting deployment to ${hosts.length} host(s)...\n`));
 
   const results: DeployResult[] = [];
 
   for (const host of hosts) {
-    console.log(pc.bgBlue(pc.white(`\n--- Deploying to ${host} ---`)));
+    const separator = pc.cyan('='.repeat(60));
+    console.log(`\n${separator}`);
+    console.log(`${pc.bgCyan(pc.black(' 🚀 DEPLOYING TO HOST '))} ${pc.bold(pc.cyan(host))}`);
+    console.log(`${separator}\n`);
     
     const result = await deployToHost(host, config);
     results.push(result);
     
+    console.log(`\n${separator}`);
+    const statusText = result.success ? pc.bgGreen(pc.black(' ✅ SUCCESS ')) : pc.bgRed(pc.white(' ❌ FAILED '));
+    console.log(`${statusText} ${pc.bold(host)}`);
+    console.log(`${separator}\n`);
+    
     if (!result.success && options?.skipError === false) {
-      console.log(pc.red(`\nDeployment to ${host} failed and --no-skip-error is set. Aborting remaining deployments.`));
+      console.log(pc.red(`Deployment to ${host} failed and --no-skip-error is set. Aborting remaining deployments.`));
       break;
     }
   }
@@ -150,9 +176,7 @@ async function deployToHost(host: string, config: DeployConfig): Promise<DeployR
     }
   }
 
-  console.log('SSH CONFIG', sshOptions);
-
-    // Use cached passphrase if available and not explicitly provided
+  // Use cached passphrase if available and not explicitly provided
     if (!sshOptions.passphrase && cachedPassphrase) {
       sshOptions.passphrase = cachedPassphrase;
     }
