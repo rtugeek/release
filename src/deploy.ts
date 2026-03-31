@@ -270,6 +270,32 @@ async function deployToHost(host: string, config: DeployConfig): Promise<DeployR
   }
 }
 
+async function putFileWithProgress(ssh: NodeSSH, localFile: string, remoteFile: string, spinner: any, fileNameToDisplay: string) {
+  const stat = fs.statSync(localFile);
+  const fileSize = stat.size;
+  const ONE_MB = 1024 * 1024;
+  
+  if (fileSize > ONE_MB) {
+    let lastPercent = -1;
+    await ssh.putFile(localFile, remoteFile, null, {
+      step: (totalTransferred, chunk, total) => {
+        const percent = Math.floor((totalTransferred / total) * 100);
+        if (percent !== lastPercent) {
+          const barLength = 20;
+          const filledLength = Math.floor((percent / 100) * barLength);
+          const bar = '='.repeat(filledLength) + '-'.repeat(barLength - filledLength);
+          const sizeMB = (total / ONE_MB).toFixed(2);
+          spinner.text = `Uploading: ${fileNameToDisplay} [${pc.cyan(bar)}] ${percent}% (${sizeMB}MB)`;
+          lastPercent = percent;
+        }
+      }
+    });
+  } else {
+    spinner.text = `Uploading: ${fileNameToDisplay}`;
+    await ssh.putFile(localFile, remoteFile);
+  }
+}
+
 async function handleUploadStep(ssh: NodeSSH, step: UploadStep) {
   const localPath = path.resolve(process.cwd(), step.local);
   const remotePath = step.remote;
@@ -301,11 +327,10 @@ async function handleUploadStep(ssh: NodeSSH, step: UploadStep) {
         // Normalize remote path for windows/linux differences
         const fileRemotePath = path.posix.join(remotePath, file.split(path.sep).join(path.posix.sep));
         
-        spinner.text = `Uploading: ${file}`;
         // Ensure remote directory exists
         const remoteDir = path.posix.dirname(fileRemotePath);
         await ssh.execCommand(`mkdir -p ${remoteDir}`);
-        await ssh.putFile(fileLocalPath, fileRemotePath);
+        await putFileWithProgress(ssh, fileLocalPath, fileRemotePath, spinner, file);
       }
       spinner.succeed(pc.green(`Successfully uploaded ${files.length} files from ${step.local}`));
     } else {
@@ -329,7 +354,7 @@ async function handleUploadStep(ssh: NodeSSH, step: UploadStep) {
     // Ensure remote directory exists for single file
     const remoteDir = path.posix.dirname(remotePath);
     await ssh.execCommand(`mkdir -p ${remoteDir}`);
-    await ssh.putFile(localPath, remotePath);
+    await putFileWithProgress(ssh, localPath, remotePath, spinner, path.basename(localPath));
     spinner.succeed(pc.green(`Successfully uploaded file ${step.local}`));
   }
 }
