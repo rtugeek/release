@@ -48,6 +48,7 @@ Expected top-level fields:
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/rtugeek/release/refs/heads/master/release.schema.json",
   "host": ["127.0.0.1", "localhost", "nyhq"],
   "port": 22,
   "username": "root",
@@ -99,12 +100,13 @@ When helping with this project:
 3. Keep `local` paths relative to the repo root unless the user explicitly wants absolute paths.
 4. Prefer absolute Linux-style paths for `remote`.
 5. Do not remove authentication fields or host entries unless the user asks.
-6. When the user wants to deploy to only one machine, prefer `release --limit <host>`.
-7. When the user wants fail-fast behavior, use `--no-skip-error`.
-8. When the user wants to inspect SSH aliases from `~/.ssh/config`, prefer `release --hosts`.
-9. If `pattern` is present, ensure it matches files relative to the `local` directory.
-10. If `ignore` is present, ensure it is compatible with glob patterns.
-11. Mention that host selection is interactive, even when multiple hosts are listed in config.
+6. Prefer validating `release.json` via JSON Schema: keep `$schema` pointing to `https://raw.githubusercontent.com/rtugeek/release/refs/heads/master/release.schema.json` for editor validation and autocomplete.
+7. When the user wants to deploy to only one machine, prefer `release --limit <host>`.
+8. When the user wants fail-fast behavior, use `--no-skip-error`.
+9. When the user wants to inspect SSH aliases from `~/.ssh/config`, prefer `release --hosts`.
+10. If `pattern` is present, ensure it matches files relative to the `local` directory.
+11. If `ignore` is present, ensure it is compatible with glob patterns.
+12. Mention that host selection is interactive, even when multiple hosts are listed in config.
 
 ## Repo-Specific Notes
 
@@ -113,7 +115,7 @@ Current implementation behavior:
 - the CLI entry is `src/index.ts`
 - deployment logic is in `src/deploy.ts`
 - config types are defined in `src/types.ts`
-- config JSON schema is `release.schema.json` (copied to `dist/release.schema.json` during build)
+- config JSON schema is `release.schema.json` (copied to `dist/release.schema.json` during build), also available at `https://raw.githubusercontent.com/rtugeek/release/refs/heads/master/release.schema.json`
 - `release --hosts` prints explicit host aliases from `~/.ssh/config`
 - `release --date-version` updates `package.json` version in the current working directory to today (`yy.m.d`)
 - supported step types are only `upload` and `command`

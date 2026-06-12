@@ -51,7 +51,7 @@ Create a JSON file (e.g., `release.json`) to define your deployment script.
 
 ```json
 {
-  "$schema": "https://widgetjs.com/schemas/release.schema.json",
+  "$schema": "https://raw.githubusercontent.com/rtugeek/release/refs/heads/master/release.schema.json",
   "host": ["192.168.1.100", "nyhq"],
   "port": 22,
   "username": "root",
