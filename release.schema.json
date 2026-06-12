@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://widgetjs.com/schemas/release.schema.json",
+  "title": "Release Config",
+  "description": "Configuration for the @widget-js/release CLI.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "host": {
+      "description": "A host alias, hostname, or a list of hosts to deploy to.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "port": {
+      "description": "SSH port. Defaults to 22.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "username": {
+      "description": "SSH username. Optional when it can be resolved from ~/.ssh/config.",
+      "type": "string",
+      "minLength": 1
+    },
+    "password": {
+      "description": "SSH password.",
+      "type": "string"
+    },
+    "privateKey": {
+      "description": "Path to the private key file.",
+      "type": "string",
+      "minLength": 1
+    },
+    "passphrase": {
+      "description": "Passphrase for the private key.",
+      "type": "string"
+    },
+    "steps": {
+      "description": "Deployment steps executed on each selected host.",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/uploadStep"
+          },
+          {
+            "$ref": "#/$defs/commandStep"
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "host"
+  ],
+  "$defs": {
+    "uploadStep": {
+      "title": "Upload Step",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "upload"
+        },
+        "local": {
+          "description": "Local file or directory path.",
+          "type": "string",
+          "minLength": 1
+        },
+        "remote": {
+          "description": "Remote destination path.",
+          "type": "string",
+          "minLength": 1
+        },
+        "pattern": {
+          "description": "Glob pattern used when uploading a directory. e.g. **/*.js",
+          "type": "string",
+          "minLength": 1
+        },
+        "ignore": {
+          "description": "Glob patterns to ignore during upload.",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "local",
+        "remote"
+      ]
+    },
+    "commandStep": {
+      "title": "Command Step",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "command"
+        },
+        "command": {
+          "description": "Command executed on the remote host.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "type",
+        "command"
+      ]
+    }
+  }
+}

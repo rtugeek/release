@@ -51,6 +51,7 @@ Create a JSON file (e.g., `release.json`) to define your deployment script.
 
 ```json
 {
+  "$schema": "https://widgetjs.com/schemas/release.schema.json",
   "host": ["192.168.1.100", "nyhq"],
   "port": 22,
   "username": "root",
@@ -82,6 +83,8 @@ Create a JSON file (e.g., `release.json`) to define your deployment script.
 }
 ```
 
+Tip: adding `$schema` enables JSON schema validation and autocomplete in editors like VS Code.
+
 ### Configuration Fields:
 
 - `host` (string | Array): The server's IP address, hostname, or **SSH Alias**. You can pass a single string or an array of strings to deploy to multiple servers. The CLI will automatically parse `~/.ssh/config` to resolve HostName, User, Port, and IdentityFile if an alias is provided.
@@ -110,10 +113,15 @@ release
 # Or specify a custom config file
 release ./custom-config.json
 
+# List host aliases from ~/.ssh/config
+release --hosts
+
 # Limit deployment to a specific host defined in your config
 release --limit nyhq
+
+# Update package.json version in current working directory to today (yy.m.d)
+release --date-version
 
 # Stop execution if any host fails (by default, it skips errors and continues)
 release --no-skip-error
 ```
-
