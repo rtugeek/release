@@ -1,6 +1,6 @@
 ---
 name: release
-description: Uses @widget-js/release for SSH deployment. Invoke when users want to create, edit, validate, or run `release.json` based upload/command deployment flows.
+description: Uses @widget-js/release for SSH deployment and package dependency validation. Invoke when users want to create, edit, validate, or run `release.json` flows or check `package.json`.
 ---
 
 # Release Deploy
@@ -13,6 +13,7 @@ Invoke this skill when the user wants to:
 - deploy files to one or more servers over SSH
 - add upload steps or remote command steps
 - limit deployment to a single host
+- validate `package.json` dependency specifiers before publish or deploy
 - troubleshoot `release` CLI behavior, SSH config resolution, key usage, or step execution
 
 Do not use this skill for:
@@ -27,6 +28,7 @@ Do not use this skill for:
 - reads a JSON config file, defaulting to `release.json`
 - deploys to one host or multiple hosts sequentially
 - supports two step types: `upload` and `command`
+- can validate `dependencies` and `devDependencies` in the current working directory's `package.json`
 - resolves SSH aliases and defaults from `~/.ssh/config`
 - falls back to `~/.ssh/id_rsa` if neither `password` nor `privateKey` is provided
 - prompts for encrypted key passphrases and caches them during the session
@@ -37,6 +39,7 @@ CLI usage:
 release
 release ./custom-config.json
 release --hosts
+release --check-deps
 release --date-version
 release --limit nyhq
 release --no-skip-error
@@ -117,11 +120,13 @@ Current implementation behavior:
 - config types are defined in `src/types.ts`
 - config JSON schema is `release.schema.json` (copied to `dist/release.schema.json` during build), also available at `https://raw.githubusercontent.com/rtugeek/release/refs/heads/master/release.schema.json`
 - `release --hosts` prints explicit host aliases from `~/.ssh/config`
+- `release --check-deps` scans the current working directory `package.json` and fails on local or non-registry dependency specifiers
 - `release --date-version` updates `package.json` version in the current working directory to today (`yy.m.d`)
 - supported step types are only `upload` and `command`
 - unknown step types are warned and skipped
 - upload directories can use glob filtering with `pattern` and `ignore`
 - command failures are printed; host-level failure handling depends on `--skip-error` and `--no-skip-error`
+- invalid dependency output should point to the section, package name, and line number when available
 
 ## Response Pattern
 
@@ -129,9 +134,10 @@ When the user asks for help, structure the work like this:
 
 1. Summarize the intended deployment target and config changes.
 2. Show the exact `release.json` changes or the full config if that is easier.
-3. If execution is requested, give the exact `release` command to run.
-4. Call out any assumptions about SSH auth, remote directories, or missing build steps.
-5. Warn about risky commands such as deleting remote files or restarting production services.
+3. If dependency validation is requested, give the exact `release --check-deps` command to run and explain what kinds of specifiers are rejected.
+4. If execution is requested, give the exact `release` command to run.
+5. Call out any assumptions about SSH auth, remote directories, publish flow, or missing build steps.
+6. Warn about risky commands such as deleting remote files, restarting production services, or publishing with local-linked dependencies.
 
 ## Good Examples
 
@@ -168,6 +174,12 @@ Example: list SSH aliases from local SSH config
 release --hosts
 ```
 
+Example: validate dependencies before publish
+
+```bash
+release --check-deps
+```
+
 ## Validation Checklist
 
 Before finishing, check:
@@ -179,3 +191,4 @@ Before finishing, check:
 - `pattern` and `ignore` are only used where relevant
 - remote commands run in the intended directory
 - any required build step is handled before deployment
+- any publishable `package.json` does not contain `workspace:`, `link:`, `file:`, path-based, git-based, or direct URL dependency specifiers

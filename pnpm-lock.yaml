@@ -14,9 +14,6 @@ importers:
       '@inquirer/prompts':
         specifier: ^8.3.2
         version: 8.5.2(@types/node@25.9.3)
-      '@widget-js/release':
-        specifier: 'link:'
-        version: 'link:'
       cli-table3:
         specifier: ^0.6.5
         version: 0.6.5
