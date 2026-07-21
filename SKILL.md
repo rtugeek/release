@@ -145,6 +145,7 @@ Example: add a build artifact upload and restart command
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/rtugeek/release/refs/heads/master/release.schema.json",
   "host": ["prod"],
   "steps": [
     {
